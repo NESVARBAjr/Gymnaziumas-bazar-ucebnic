@@ -1,0 +1,1173 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+    <meta charset="UTF-8">
+    <!-- Optimalizace pro mobilní zobrazení, zákaz nechtěného zoomování -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>Bazar Učebnic - GymAs</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- Knihovna pro detekci a rozpoznávání QR kódů z obrázků -->
+    <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        bazar: {
+                            green: '#10b981', // Emerald 500
+                            dark: '#18181b',  // Zinc 900 (Jemnější černá, luxusnější)
+                            gray: '#f4f4f5',  // Jemná šedá (Zinc 100)
+                            light: '#ffffff',
+                            red: '#ef4444'
+                        }
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    },
+                    boxShadow: {
+                        'glass': '0 8px 32px 0 rgba(0, 0, 0, 0.05)',
+                        'glow': '0 0 30px rgba(16, 185, 129, 0.3)',
+                        'premium': '0 20px 40px -15px rgba(0,0,0,0.05)',
+                        'pill': '0 10px 40px -10px rgba(16, 185, 129, 0.2)',
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        :root {
+            /* Detekce moderních prvků telefonu (výřezy, spodní lišta) */
+            --sat: env(safe-area-inset-top, 0px);
+            --sab: env(safe-area-inset-bottom, 0px);
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #18181b; /* Tmavé okolí mimo telefon */
+            margin: 0;
+            padding: 0;
+            -webkit-tap-highlight-color: transparent;
+            overscroll-behavior-y: none;
+        }
+
+        /* Skrytí posuvníků pro čistý vzhled */
+        .hide-scrollbar::-webkit-scrollbar { display: none; }
+        .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+        /* Luxusní skleněná plovoucí lišta */
+        .glass-pill {
+            background: rgba(255, 255, 255, 0.85);
+            backdrop-filter: blur(30px) saturate(200%);
+            -webkit-backdrop-filter: blur(30px) saturate(200%);
+            border: 1px solid rgba(255, 255, 255, 1);
+        }
+
+        .glass-panel-light {
+            background: rgba(255, 255, 255, 0.7);
+            backdrop-filter: blur(40px) saturate(200%);
+            -webkit-backdrop-filter: blur(40px) saturate(200%);
+            border: 1px solid rgba(255, 255, 255, 0.8);
+        }
+
+        /* Hladké přechody mezi pohledy */
+        .view-section {
+            display: none;
+            opacity: 0;
+            transform: scale(0.98) translateY(15px);
+            transition: all 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        
+        .view-section.active {
+            display: block;
+            opacity: 1;
+            transform: scale(1) translateY(0);
+            animation: springUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        }
+
+        @keyframes springUp {
+            0% { opacity: 0; transform: translateY(40px) scale(0.95); }
+            100% { opacity: 1; transform: translateY(0) scale(1); }
+        }
+
+        @keyframes slideInRight {
+            0% { transform: translateX(100%); }
+            100% { transform: translateX(0); }
+        }
+
+        .slide-in {
+            animation: slideInRight 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        }
+
+        /* Kaskádovitá animace pro inzeráty */
+        @keyframes slideUpFade {
+            0% { opacity: 0; transform: translateY(20px) scale(0.95); }
+            100% { opacity: 1; transform: translateY(0) scale(1); }
+        }
+        .animate-slide-up-fade {
+            animation: slideUpFade 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+            opacity: 0; /* Začíná neviditelně, animace ho odhalí */
+        }
+
+        /* Efekt levitace (dýchání) pro hlavní tlačítko */
+        @keyframes float {
+            0% { transform: translateY(0px); }
+            50% { transform: translateY(-6px); }
+            100% { transform: translateY(0px); }
+        }
+        .animate-float {
+            animation: float 4s ease-in-out infinite;
+        }
+
+        /* Ochrana pro moderní iPhony (Notch / Dynamic Island) */
+        .safe-pt { padding-top: calc(max(var(--sat), 1.5rem) + 1rem); }
+        .safe-pb { padding-bottom: calc(max(var(--sab), 1rem) + 0.5rem); }
+
+        /* Čisté inputy */
+        input:focus, select:focus, textarea:focus {
+            outline: none;
+        }
+
+        /* Obálka aplikace pro simulaci mobilu na desktopu i reálné zobrazení */
+        .app-container {
+            width: 100vw;
+            height: 100dvh;
+            background-color: #f4f4f5;
+            position: relative;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+
+        @media (min-width: 640px) {
+            .app-container {
+                max-width: 420px;
+                height: 900px;
+                max-height: 95vh;
+                margin: auto;
+                border-radius: 50px;
+                box-shadow: 0 0 0 12px #18181b, 0 30px 60px -12px rgba(0, 0, 0, 0.8), inset 0 0 0 2px rgba(255,255,255,0.2);
+            }
+        }
+    </style>
+</head>
+<body class="flex items-center justify-center min-h-screen relative text-bazar-dark">
+
+    <div id="toast-container" class="fixed top-12 left-1/2 -translate-x-1/2 z-[1000] flex flex-col gap-3 w-11/12 max-w-sm pointer-events-none transition-all duration-300"></div>
+
+    <!-- Fotogalerie Modal -->
+    <div id="gallery-modal" class="fixed inset-0 bg-black/95 z-[9999] hidden flex-col items-center justify-center transition-opacity duration-300 opacity-0 backdrop-blur-sm">
+        <button onclick="window.closeGallery()" class="absolute top-8 right-6 w-12 h-12 bg-white/10 rounded-full flex items-center justify-center text-white backdrop-blur-md z-50 hover:bg-white/20 active:scale-90 transition">
+            <i data-lucide="x" class="w-6 h-6"></i>
+        </button>
+        <div class="w-full h-full flex items-center justify-center p-4">
+            <img id="gallery-image" src="" class="max-w-full max-h-full object-contain transform transition-transform duration-500 scale-95" />
+        </div>
+    </div>
+
+    <div id="login-overlay" class="fixed inset-0 bg-gray-50 z-[100] flex flex-col items-center justify-center p-6 transition-opacity duration-700 overflow-y-auto">
+        <!-- Animované gradienty v pozadí pro svěží Light Premium vzhled -->
+        <div class="absolute top-[-15%] left-[-15%] w-[70%] h-[70%] bg-emerald-200/40 rounded-full blur-[80px] animate-pulse" style="animation-duration: 6s;"></div>
+        <div class="absolute bottom-[-10%] right-[-10%] w-[60%] h-[60%] bg-gray-300/50 rounded-full blur-[80px] animate-pulse" style="animation-duration: 8s; animation-delay: 2s;"></div>
+        <div class="absolute top-[40%] right-[-20%] w-[50%] h-[50%] bg-green-100/40 rounded-full blur-[60px] animate-pulse" style="animation-duration: 7s; animation-delay: 1s;"></div>
+        
+        <div class="w-full max-w-sm flex flex-col items-center my-auto py-8 relative z-10">
+            <!-- Logo -->
+            <div class="w-24 h-24 bg-white rounded-[2.5rem] flex items-center justify-center shadow-xl mb-8 transform transition-transform hover:scale-105 border border-white">
+                <div class="w-16 h-16 bg-green-50 rounded-full flex items-center justify-center">
+                    <i data-lucide="book-open-check" class="w-8 h-8 text-bazar-green stroke-[2.5]"></i>
+                </div>
+            </div>
+            
+            <h1 class="text-4xl font-black mb-2 tracking-tighter text-bazar-dark text-center leading-none">Gymnázium Aš</h1>
+            <p class="text-gray-500 font-bold text-sm mb-12 uppercase tracking-widest text-center">Bazar pro učebnice</p>
+            
+            <!-- Login Box (Světlé luxusní sklo) -->
+            <div id="auth-login-box" class="w-full glass-panel-light text-bazar-dark rounded-[2.5rem] p-8 shadow-2xl relative overflow-hidden">
+                <h2 class="text-2xl font-black mb-1">Přihlášení</h2>
+                <p class="text-xs text-gray-500 font-medium mb-8">Zadejte svůj školní e-mail.</p>
+                
+                <form id="form-login" onsubmit="handleLogin(event)" class="space-y-4 relative z-10">
+                    <div>
+                        <input id="login-email" type="email" required class="w-full bg-white/60 border border-white rounded-2xl px-5 py-4 text-sm font-bold text-bazar-dark focus:bg-white focus:border-bazar-green focus:ring-4 focus:ring-green-50 transition-all placeholder-gray-400 shadow-sm" placeholder="jmeno@gymas.cz" />
+                    </div>
+                    <div>
+                        <input id="login-password" type="password" required class="w-full bg-white/60 border border-white rounded-2xl px-5 py-4 text-sm font-bold text-bazar-dark focus:bg-white focus:border-bazar-green focus:ring-4 focus:ring-green-50 transition-all placeholder-gray-400 shadow-sm" placeholder="Heslo" />
+                    </div>
+                    <button type="submit" class="w-full h-14 bg-bazar-dark text-white rounded-2xl font-black text-base shadow-xl mt-4 active:scale-95 transition-all flex items-center justify-center gap-2 hover:bg-black">
+                        Vstoupit <i data-lucide="arrow-right" class="w-5 h-5 stroke-[2.5]"></i>
+                    </button>
+                </form>
+                <div class="mt-8 text-center relative z-10">
+                    <p class="text-sm text-gray-500 font-medium">Nemáte účet?</p>
+                    <button type="button" onclick="toggleAuthMode('register')" class="text-bazar-green font-black text-sm mt-1 hover:text-emerald-600 active:scale-95 transition">Zaregistrovat se s e-mailem školy</button>
+                </div>
+            </div>
+
+            <!-- Registrace Box -->
+            <div id="auth-register-box" class="w-full glass-panel-light text-bazar-dark rounded-[2.5rem] p-8 shadow-2xl hidden relative overflow-hidden">
+                <h2 class="text-2xl font-black mb-1">Nový účet</h2>
+                <p class="text-xs text-gray-500 font-medium mb-8">Pouze @gymas.cz a @gymnaziumas.cz</p>
+                
+                <form id="form-register" onsubmit="handleRegister(event)" class="space-y-4 relative z-10">
+                    <input id="reg-name" type="text" required class="w-full bg-white/60 border border-white rounded-2xl px-5 py-4 text-sm font-bold text-bazar-dark focus:bg-white focus:border-bazar-green focus:ring-4 focus:ring-green-50 transition-all placeholder-gray-400 shadow-sm" placeholder="Jméno a Příjmení" />
+                    
+                    <input id="reg-email" type="email" required class="w-full bg-white/60 border border-white rounded-2xl px-5 py-4 text-sm font-bold text-bazar-dark focus:bg-white focus:border-bazar-green focus:ring-4 focus:ring-green-50 transition-all placeholder-gray-400 shadow-sm" placeholder="jmeno@gymas.cz" />
+                    
+                    <input id="reg-password" type="password" required minlength="6" class="w-full bg-white/60 border border-white rounded-2xl px-5 py-4 text-sm font-bold text-bazar-dark focus:bg-white focus:border-bazar-green focus:ring-4 focus:ring-green-50 transition-all placeholder-gray-400 shadow-sm" placeholder="Vytvořit heslo (min. 6 znaků)" />
+                    
+                    <input id="reg-password-confirm" type="password" required minlength="6" class="w-full bg-white/60 border border-white rounded-2xl px-5 py-4 text-sm font-bold text-bazar-dark focus:bg-white focus:border-bazar-green focus:ring-4 focus:ring-green-50 transition-all placeholder-gray-400 shadow-sm" placeholder="Potvrdit heslo" />
+                    
+                    <button type="submit" class="w-full h-14 bg-bazar-dark text-white rounded-2xl font-black text-base shadow-xl mt-4 active:scale-95 transition-all hover:bg-black">
+                        Zaregistrovat se
+                    </button>
+                </form>
+                <div class="mt-8 text-center relative z-10">
+                    <p class="text-sm text-gray-500 font-medium">Už máte účet?</p>
+                    <button type="button" onclick="toggleAuthMode('login')" class="text-bazar-dark font-black text-sm mt-1 hover:text-black active:scale-95 transition">Zpět na přihlášení</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="app-container" id="app-root" style="display: none;">
+        
+        <!-- Obsahová část -->
+        <div class="flex-1 overflow-y-auto hide-scrollbar pb-24 relative bg-bazar-gray" id="main-content">
+            
+            <section id="view-home" class="view-section active h-full">
+                <!-- Hlavička a Filtry (Sticky Wrapper) -->
+                <div class="sticky top-0 z-40 bg-bazar-gray/80 backdrop-blur-2xl border-b border-gray-200/50">
+                    <div class="safe-pt px-6 pb-2">
+                        <div class="flex justify-between items-center mb-6">
+                            <div>
+                                <h1 class="text-3xl font-black text-bazar-dark tracking-tighter">Gymnázium Aš</h1>
+                                <p class="text-xs text-bazar-green font-black mt-1 uppercase tracking-widest">Bazar pro učebnice</p>
+                            </div>
+                            <button onclick="switchView('view-profile')" class="w-12 h-12 rounded-[18px] bg-white border border-gray-200 shadow-sm flex items-center justify-center text-bazar-dark hover:bg-gray-50 transition-transform active:scale-90">
+                                <i data-lucide="user" class="w-6 h-6"></i>
+                            </button>
+                        </div>
+
+                        <!-- Vyhledávání -->
+                        <div class="relative flex items-center w-full h-14 rounded-2xl bg-white shadow-sm border border-gray-200 focus-within:border-bazar-green focus-within:ring-4 focus-within:ring-green-50 transition-all overflow-hidden">
+                            <div class="pl-4 pr-3 text-gray-400"><i data-lucide="search" class="w-5 h-5"></i></div>
+                            <input id="search-input" class="w-full h-full bg-transparent text-sm text-bazar-dark font-bold placeholder-gray-400" type="text" placeholder="Hledat učebnici..." onkeyup="filterListings()">
+                        </div>
+                    </div>
+
+                    <!-- Kategorie -->
+                    <div class="pl-6 py-4 flex gap-2.5 overflow-x-auto hide-scrollbar" id="category-filters">
+                        <!-- Generováno JS -->
+                    </div>
+                </div>
+
+                <!-- Grid inzerátů -->
+                <div class="px-6 mt-4 pb-8">
+                    <div id="listings-grid" class="grid grid-cols-2 gap-4">
+                        <!-- Generováno JS -->
+                    </div>
+
+                    <!-- Prázdný stav -->
+                    <div id="empty-state" class="hidden flex-col items-center justify-center text-center py-20 px-6 bg-white rounded-[2rem] border border-gray-200 mt-4 shadow-sm relative overflow-hidden">
+                        <div class="absolute inset-0 bg-gradient-to-br from-transparent to-gray-50 pointer-events-none"></div>
+                        <div class="w-20 h-20 bg-gray-50 rounded-full flex items-center justify-center text-gray-400 mb-6 border border-gray-100 shadow-inner relative z-10">
+                            <i data-lucide="book-dashed" class="w-10 h-10"></i>
+                        </div>
+                        <h3 class="text-xl font-black text-bazar-dark mb-2 relative z-10">Zatím tu nic není</h3>
+                        <p class="text-sm text-gray-500 mb-8 font-medium relative z-10">Přidejte jako první svou starou učebnici a vydělejte.</p>
+                        <button onclick="switchView('view-add'); goToStep1();" class="bg-gradient-to-r from-bazar-dark to-gray-800 text-white px-8 py-4 rounded-2xl font-black text-sm shadow-xl active:scale-95 transition-transform flex gap-2 items-center relative z-10">
+                            <i data-lucide="plus" class="w-5 h-5"></i> Přidat inzerát
+                        </button>
+                    </div>
+                </div>
+            </section>
+
+            <section id="view-add" class="view-section bg-white min-h-full pb-20 relative z-[60]">
+                <div class="safe-pt px-6 pb-4 sticky top-0 bg-white/90 backdrop-blur-xl z-40 flex items-center justify-between border-b border-gray-100">
+                    <button onclick="switchView('view-home')" class="w-10 h-10 rounded-full bg-gray-50 border border-gray-100 flex items-center justify-center text-bazar-dark active:scale-90 transition-transform">
+                        <i data-lucide="x" class="w-5 h-5"></i>
+                    </button>
+                    <h1 class="text-lg font-black text-bazar-dark" id="add-title">Krok 1/2: Kniha</h1>
+                    <div class="w-10"></div>
+                </div>
+
+                <div class="p-6">
+                    <form id="add-form">
+                        <!-- KROK 1 -->
+                        <div id="step-1-add" class="space-y-6">
+                            <!-- Foto Upload -->
+                            <div>
+                                <label class="block text-[11px] font-black text-gray-400 uppercase tracking-wider mb-3">Fotografie (Povinné) *</label>
+                                <input type="file" id="image-upload" accept="image/*" class="hidden" onchange="handleImageSelection(event, 'book')">
+                                <div class="flex gap-3">
+                                    <div id="image-preview-container" class="relative w-32 h-44 rounded-2xl bg-bazar-gray border-2 border-dashed border-gray-300 flex flex-col items-center justify-center text-gray-400 cursor-pointer hover:bg-gray-200 transition overflow-hidden" onclick="document.getElementById('image-upload').click()">
+                                        <div id="upload-placeholder" class="flex flex-col items-center pointer-events-none">
+                                            <div class="w-10 h-10 bg-white rounded-full shadow-sm flex items-center justify-center mb-2 text-bazar-dark">
+                                                <i data-lucide="camera" class="w-5 h-5"></i>
+                                            </div>
+                                            <span class="text-[10px] font-bold text-gray-500">Klepněte</span>
+                                        </div>
+                                        <img id="image-preview" class="hidden absolute inset-0 w-full h-full object-cover z-10" alt="Náhled">
+                                        <button type="button" id="remove-image-btn" class="hidden absolute top-2 right-2 w-8 h-8 bg-black/60 backdrop-blur-md rounded-full text-white flex items-center justify-center z-20 active:scale-95" onclick="removeImage(event, 'book')">
+                                            <i data-lucide="trash-2" class="w-4 h-4"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div>
+                                <label class="block text-[11px] font-black text-gray-400 uppercase tracking-wider mb-2">Název učebnice *</label>
+                                <input id="input-title" type="text" required class="w-full bg-bazar-gray border border-transparent rounded-2xl px-5 py-4 text-bazar-dark font-bold focus:bg-white focus:border-bazar-green focus:ring-4 focus:ring-green-50 transition placeholder-gray-400" placeholder="Přesný název..." />
+                            </div>
+
+                            <div class="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label class="block text-[11px] font-black text-gray-400 uppercase tracking-wider mb-2">Předmět *</label>
+                                    <select id="input-subject" required class="w-full bg-bazar-gray border border-transparent rounded-2xl px-5 py-4 text-bazar-dark font-bold focus:bg-white focus:border-bazar-green focus:ring-4 focus:ring-green-50 transition appearance-none">
+                                        <option value="" disabled selected>Zvolit...</option>
+                                        <option value="Matematika">Matematika</option>
+                                        <option value="Jazyky">Jazyky</option>
+                                        <option value="Fyzika">Fyzika</option>
+                                        <option value="Biologie">Biologie</option>
+                                        <option value="Chemie">Chemie</option>
+                                        <option value="ZSV">ZSV</option>
+                                        <option value="Ostatní">Ostatní</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="block text-[11px] font-black text-gray-400 uppercase tracking-wider mb-2">Stav *</label>
+                                    <select id="input-condition" required class="w-full bg-bazar-gray border border-transparent rounded-2xl px-5 py-4 text-bazar-dark font-bold focus:bg-white focus:border-bazar-green focus:ring-4 focus:ring-green-50 transition appearance-none">
+                                        <option value="Nová">Jako nová</option>
+                                        <option value="Dobrý" selected>Dobrý</option>
+                                        <option value="Popsaná">Popsaná</option>
+                                        <option value="Špatný">Špatný</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <div>
+                                <label class="block text-[11px] font-black text-gray-400 uppercase tracking-wider mb-2">Cena *</label>
+                                <div class="relative">
+                                    <input id="input-price" type="number" required min="1" class="w-full bg-bazar-gray border border-transparent rounded-2xl pl-5 pr-16 py-4 text-bazar-dark font-black text-2xl focus:bg-white focus:border-bazar-green focus:ring-4 focus:ring-green-50 transition" placeholder="0" />
+                                    <span class="absolute right-5 top-1/2 -translate-y-1/2 text-gray-400 font-black text-lg">Kč</span>
+                                </div>
+                            </div>
+
+                            <div>
+                                <label class="block text-[11px] font-black text-gray-400 uppercase tracking-wider mb-2">Doplňující info</label>
+                                <textarea id="input-desc" rows="3" class="w-full bg-bazar-gray border border-transparent rounded-2xl px-5 py-4 text-bazar-dark font-medium focus:bg-white focus:border-bazar-green focus:ring-4 focus:ring-green-50 transition placeholder-gray-400" placeholder="Chybí CD, rohy jsou ošoupané..."></textarea>
+                            </div>
+
+                            <button type="button" onclick="goToStep2()" class="w-full mt-8 h-14 bg-bazar-dark text-white rounded-2xl font-black text-lg shadow-xl active:scale-95 transition-transform flex justify-center items-center gap-2">
+                                Další krok <i data-lucide="arrow-right" class="w-5 h-5"></i>
+                            </button>
+                        </div>
+
+                        <div id="step-2-add" class="hidden space-y-6">
+                            <div class="bg-blue-50 p-4 rounded-2xl border border-blue-100 flex gap-3 mb-6">
+                                <i data-lucide="info" class="w-6 h-6 text-blue-500 flex-shrink-0"></i>
+                                <p class="text-xs text-blue-900 font-medium">Zvolte, jak vám kupující zaplatí. Pokud zvolíte QR kód, musíte vložit obrázek kódu ze své banky, který kupující naskenuje <b>při osobním předání</b>.</p>
+                            </div>
+
+                            <label class="flex items-center p-5 bg-bazar-gray border border-gray-200 rounded-2xl cursor-pointer hover:bg-gray-100 transition focus-within:ring-2 focus-within:border-bazar-green">
+                                <input type="checkbox" id="pay-cash" checked class="w-6 h-6 text-bazar-green rounded border-gray-300">
+                                <div class="ml-4">
+                                    <span class="block font-black text-bazar-dark text-base">Hotově ve škole</span>
+                                    <span class="block text-[11px] text-gray-500 font-medium mt-1">Z ruky do ruky.</span>
+                                </div>
+                            </label>
+
+                            <label class="flex items-center p-5 bg-bazar-gray border border-gray-200 rounded-2xl cursor-pointer hover:bg-gray-100 transition focus-within:ring-2 focus-within:border-bazar-green" onchange="toggleQRSection()">
+                                <input type="checkbox" id="pay-qr" class="w-6 h-6 text-bazar-green rounded border-gray-300">
+                                <div class="ml-4">
+                                    <span class="block font-black text-bazar-dark text-base">QR Platba na místě</span>
+                                    <span class="block text-[11px] text-gray-500 font-medium mt-1">Kupující naskenuje kód z vašeho inzerátu při setkání.</span>
+                                </div>
+                            </label>
+
+                            <div id="qr-upload-section" class="hidden mt-2 p-6 border-2 border-dashed border-gray-300 rounded-[2rem] bg-bazar-gray flex flex-col items-center text-center">
+                                <input type="file" id="qr-upload" accept="image/*" class="hidden" onchange="handleImageSelection(event, 'qr')">
+                                <div id="qr-preview-container" class="relative w-40 h-40 rounded-2xl bg-white border border-gray-200 flex flex-col items-center justify-center shadow-sm cursor-pointer hover:bg-gray-50 transition overflow-hidden" onclick="document.getElementById('qr-upload').click()">
+                                    <div id="qr-upload-placeholder" class="flex flex-col items-center pointer-events-none">
+                                        <div class="w-12 h-12 bg-bazar-gray rounded-full flex items-center justify-center mb-3 text-bazar-dark">
+                                            <i data-lucide="qr-code" class="w-6 h-6"></i>
+                                        </div>
+                                        <span class="text-xs font-bold text-gray-500">Vložit obrázek</span>
+                                    </div>
+                                    <img id="qr-preview" class="hidden absolute inset-0 w-full h-full object-cover z-10 p-2" alt="Náhled QR">
+                                    <button type="button" id="remove-qr-btn" class="hidden absolute top-2 right-2 w-8 h-8 bg-black/60 backdrop-blur-md rounded-full text-white flex items-center justify-center z-20 active:scale-95" onclick="removeImage(event, 'qr')">
+                                        <i data-lucide="x" class="w-4 h-4"></i>
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div class="flex gap-3 pt-8 border-t border-gray-100 mt-8">
+                                <button type="button" onclick="goToStep1()" class="w-1/3 h-14 bg-bazar-gray text-bazar-dark rounded-2xl font-black text-base active:scale-95 transition-transform">Zpět</button>
+                                <button type="button" onclick="submitFinalAdd()" class="w-2/3 h-14 bg-gradient-to-r from-bazar-green to-emerald-600 text-white rounded-2xl font-black text-base shadow-glow active:scale-95 transition-transform flex justify-center items-center gap-2">
+                                    Zveřejnit <i data-lucide="check" class="w-5 h-5"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </section>
+
+            <section id="view-detail" class="view-section slide-in bg-white min-h-full pb-20 relative z-[70]">
+                <div id="detail-content"></div>
+            </section>
+
+            <section id="view-checkout" class="view-section slide-in bg-white min-h-full pb-24 relative z-[80]">
+                <div class="safe-pt px-6 pb-4 sticky top-0 bg-white/90 backdrop-blur-xl z-40 flex items-center justify-between border-b border-gray-100">
+                    <button onclick="switchView('view-detail')" class="w-10 h-10 rounded-full bg-gray-50 border border-gray-100 flex items-center justify-center text-bazar-dark active:scale-90 transition-transform">
+                        <i data-lucide="arrow-left" class="w-5 h-5"></i>
+                    </button>
+                    <h1 class="text-lg font-black text-bazar-dark">Nákup</h1>
+                    <div class="w-10"></div>
+                </div>
+                <div id="checkout-content" class="p-6"></div>
+            </section>
+
+            <section id="view-profile" class="view-section h-full p-6 safe-pt bg-bazar-gray overflow-y-auto hide-scrollbar pb-32">
+                <h2 class="text-3xl font-black text-bazar-dark mb-6 tracking-tight">Můj Profil</h2>
+                
+                <div class="bg-white rounded-[2rem] p-5 shadow-premium border border-gray-100 flex items-center gap-5 mb-8 relative overflow-hidden">
+                    <div class="absolute inset-0 bg-gradient-to-br from-transparent to-gray-50 pointer-events-none"></div>
+                    <div id="profile-avatar-letters" class="w-16 h-16 rounded-[1.25rem] bg-gradient-to-br from-bazar-dark to-gray-800 text-white flex items-center justify-center text-2xl font-black shadow-lg"></div>
+                    <div class="flex-1 overflow-hidden relative z-10">
+                        <h3 id="profile-name" class="font-black text-bazar-dark text-xl truncate">Jméno</h3>
+                        <p id="profile-email" class="text-gray-500 text-sm font-medium truncate">email</p>
+                    </div>
+                </div>
+                
+                <div class="mb-8">
+                    <div class="flex justify-between items-center mb-4">
+                        <h3 class="text-sm font-black text-bazar-dark uppercase tracking-wider">Moje nákupy (Rezervace)</h3>
+                    </div>
+                    <div id="profile-my-orders" class="space-y-4"></div>
+                </div>
+
+                <div class="mb-8">
+                    <div class="flex justify-between items-center mb-4">
+                        <h3 class="text-sm font-black text-bazar-dark uppercase tracking-wider">Moje nabídky (Prodej)</h3>
+                    </div>
+                    <div id="profile-my-listings" class="space-y-4"></div>
+                </div>
+
+                <div class="pt-6 border-t border-gray-200">
+                    <button onclick="handleLogout()" class="w-full h-14 bg-white border border-gray-200 text-red-500 rounded-2xl font-black text-base shadow-sm active:scale-95 transition flex justify-center items-center gap-2">
+                        <i data-lucide="log-out" class="w-5 h-5"></i> Odhlásit se
+                    </button>
+                </div>
+            </section>
+
+        </div> 
+
+        <!-- Plovoucí moderní navigace (Pill) -->
+        <div class="absolute bottom-6 left-6 right-6 glass-pill rounded-[2rem] z-50 shadow-pill transition-all duration-500 ease-[cubic-bezier(0.16,1,0.3,1)]" id="bottom-nav-bar">
+            <div class="flex justify-between items-center relative h-16 w-full px-2">
+                
+                <!-- Levé tlačítko -->
+                <button onclick="switchView('view-home')" class="nav-btn w-1/3 flex flex-col items-center justify-center transition-all duration-300 text-bazar-dark h-full active:scale-90" data-target="view-home">
+                    <div class="w-10 h-10 rounded-xl flex items-center justify-center nav-icon-wrapper bg-green-50">
+                        <i data-lucide="layout-grid" class="w-[22px] h-[22px] stroke-[2.5]"></i>
+                    </div>
+                </button>
+
+                <!-- Středové plovoucí tlačítko -->
+                <div class="w-1/3 flex justify-center relative">
+                    <button onclick="switchView('view-add'); document.getElementById('add-form').reset(); goToStep1(); removeImage(new Event('click'), 'book'); removeImage(new Event('click'), 'qr');" 
+                            class="absolute -top-7 w-[60px] h-[60px] bg-bazar-dark rounded-full flex items-center justify-center text-white shadow-xl transform transition-transform hover:scale-105 active:scale-95 z-50 animate-float">
+                        <i data-lucide="plus" class="w-8 h-8 stroke-[3]"></i>
+                    </button>
+                </div>
+
+                <!-- Pravé tlačítko -->
+                <button onclick="switchView('view-profile')" class="nav-btn w-1/3 flex flex-col items-center justify-center transition-all duration-300 text-gray-400 hover:text-bazar-dark h-full active:scale-90" data-target="view-profile">
+                    <div class="w-10 h-10 rounded-xl flex items-center justify-center nav-icon-wrapper bg-transparent">
+                        <i data-lucide="user" class="w-[22px] h-[22px] stroke-[2.5]"></i>
+                    </div>
+                </button>
+
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // SIMULACE DATABÁZE V PAMĚTI
+        window.dbListings = [];
+        window.dbUsers = [];
+        window.currentUser = null;
+        
+        let activeCategory = 'Vše';
+        const categories = ['Vše', 'Matematika', 'Jazyky', 'Fyzika', 'Biologie', 'Chemie', 'ZSV', 'Ostatní'];
+        let currentUploadedImageBase64 = null; 
+        let currentUploadedQRBase64 = null; 
+        let currentItemForCheckout = null;
+        const ALLOWED_DOMAINS = ['@gymas.cz', '@gymnaziumas.cz'];
+
+        // === AUTENTIKACE (Aplikace) ===
+        window.toggleAuthMode = (mode) => {
+            if(mode === 'register') {
+                document.getElementById('auth-login-box').classList.add('hidden');
+                document.getElementById('auth-register-box').classList.remove('hidden');
+            } else {
+                document.getElementById('auth-register-box').classList.add('hidden');
+                document.getElementById('auth-login-box').classList.remove('hidden');
+            }
+        };
+
+        window.handleRegister = (e) => {
+            e.preventDefault();
+            const name = document.getElementById('reg-name').value.trim();
+            const email = document.getElementById('reg-email').value.trim().toLowerCase();
+            const pass = document.getElementById('reg-password').value;
+            const passConfirm = document.getElementById('reg-password-confirm').value;
+
+            const isValidDomain = ALLOWED_DOMAINS.some(domain => email.endsWith(domain));
+            if (!isValidDomain) { window.showToast("CHYBA: Přístup povolen pouze pro @gymas.cz"); return; }
+            if (pass !== passConfirm) { window.showToast("CHYBA: Hesla se neshodují."); return; }
+
+            if (window.dbUsers.find(u => u.email === email)) {
+                window.showToast("CHYBA: E-mail už je zaregistrovaný."); return;
+            }
+
+            const newUser = { name, email, password: pass }; 
+            
+            // Uložení uživatele do simulované databáze
+            window.dbUsers.push(newUser);
+            
+            loginSuccess(newUser);
+            window.showToast("Vítejte v Bazaru!");
+        };
+
+        window.handleLogin = (e) => {
+            e.preventDefault();
+            const email = document.getElementById('login-email').value.trim().toLowerCase();
+            const pass = document.getElementById('login-password').value;
+
+            // Ověření přes data ze simulované databáze
+            const user = window.dbUsers.find(u => u.email === email && u.password === pass);
+
+            if (user) {
+                loginSuccess(user);
+                window.showToast("Úspěšně přihlášeno.");
+            } else {
+                window.showToast("CHYBA: Nesprávný e-mail nebo heslo.");
+            }
+        };
+
+        function loginSuccess(user) {
+            window.currentUser = user;
+            document.getElementById('login-overlay').style.opacity = '0';
+            setTimeout(() => { document.getElementById('login-overlay').style.display = 'none'; }, 500);
+            document.getElementById('app-root').style.display = 'flex';
+            
+            document.getElementById('profile-name').innerText = user.name;
+            document.getElementById('profile-email').innerText = user.email;
+            document.getElementById('profile-avatar-letters').innerText = user.name.charAt(0).toUpperCase();
+
+            lucide.createIcons();
+            
+            // Vynutíme zobrazení hlavní stránky
+            window.switchView('view-home');
+            window.renderCategories();
+            window.filterListings();
+        }
+
+        window.handleLogout = () => {
+            window.currentUser = null;
+            document.getElementById('login-overlay').style.display = 'flex';
+            setTimeout(() => { document.getElementById('login-overlay').style.opacity = '1'; }, 10);
+            document.getElementById('app-root').style.display = 'none';
+            document.getElementById('form-login').reset();
+            document.getElementById('form-register').reset();
+            window.toggleAuthMode('login');
+        };
+
+        // === NAVIGACE (Pohledy) ===
+        window.switchView = (viewId) => {
+            document.querySelectorAll('.view-section').forEach(el => el.classList.remove('active'));
+            document.getElementById(viewId).classList.add('active');
+
+            // Stylování ikon v menu pro prémiový vzhled
+            document.querySelectorAll('.nav-btn').forEach(btn => {
+                const wrapper = btn.querySelector('.nav-icon-wrapper');
+                if(btn.dataset.target === viewId) {
+                    btn.classList.replace('text-gray-400', 'text-bazar-dark');
+                    wrapper.classList.add('bg-green-50');
+                    wrapper.classList.remove('bg-transparent');
+                } else {
+                    btn.classList.replace('text-bazar-dark', 'text-gray-400');
+                    wrapper.classList.add('bg-transparent');
+                    wrapper.classList.remove('bg-green-50');
+                }
+            });
+
+            const bottomNav = document.getElementById('bottom-nav-bar');
+            if (viewId === 'view-detail' || viewId === 'view-checkout' || viewId === 'view-add') {
+                bottomNav.style.transform = 'translateY(150px) scale(0.9)';
+                bottomNav.style.opacity = '0';
+                bottomNav.style.pointerEvents = 'none';
+            } else {
+                bottomNav.style.transform = 'translateY(0) scale(1)';
+                bottomNav.style.opacity = '1';
+                bottomNav.style.pointerEvents = 'auto';
+            }
+
+            if (viewId === 'view-profile') {
+                window.renderProfileListings();
+                window.renderProfileOrders();
+            }
+            document.getElementById('main-content').scrollTo(0,0);
+        };
+
+        // === PROFIL A MANAŽMENT INZERÁTŮ ===
+        window.renderProfileListings = () => {
+            const container = document.getElementById('profile-my-listings');
+            container.innerHTML = '';
+            
+            if (!window.currentUser) return;
+            const myListings = window.dbListings.filter(item => item.sellerEmail === window.currentUser.email);
+            
+            if (myListings.length === 0) {
+                container.innerHTML = `<p class="text-sm text-gray-500 font-medium py-8 text-center bg-white rounded-2xl border border-gray-200">Zatím nic neprodáváte.</p>`;
+                return;
+            }
+            
+            // Zobrazení od nejnovějších
+            const sortedListings = [...myListings].sort((a,b) => (b.timestamp || 0) - (a.timestamp || 0));
+            
+            sortedListings.forEach(item => {
+                const isSold = item.status === 'sold';
+                const card = document.createElement('div');
+                card.className = `p-4 bg-white border ${isSold ? 'border-orange-200 bg-orange-50/50' : 'border-gray-200'} rounded-2xl shadow-sm flex flex-col gap-3 transition`;
+                
+                let actionsHtml = isSold ? `
+                        <div class="flex flex-col gap-2 w-full mt-2 pt-3 border-t border-orange-100">
+                            <span class="text-xs text-orange-600 font-black mb-1 flex items-center gap-1"><i data-lucide="clock" class="w-4 h-4"></i> Zarezervováno kupujícím. Čeká se na platbu.</span>
+                            <div class="flex gap-2">
+                                <button onclick="window.changeListingStatus('${item.id}', 'available')" class="flex-1 py-3 bg-white border border-gray-200 text-gray-600 rounded-xl font-bold text-xs active:scale-95 transition shadow-sm">
+                                    Nezaplatil (Zpět)
+                                </button>
+                                <button onclick="window.deleteListing('${item.id}')" class="flex-1 py-3 bg-bazar-dark text-white rounded-xl font-bold text-xs active:scale-95 transition shadow-sm">
+                                    Mám peníze (Smazat)
+                                </button>
+                            </div>
+                        </div>
+                    ` : `
+                        <div class="flex gap-2 w-full mt-1 pt-3 border-t border-gray-100">
+                            <button onclick="window.deleteListing('${item.id}')" class="w-full py-2 bg-bazar-gray text-red-500 rounded-xl font-bold text-xs active:scale-95 transition flex items-center justify-center gap-1 hover:bg-red-50">
+                                <i data-lucide="trash" class="w-4 h-4"></i> Smazat z nabídky
+                            </button>
+                        </div>
+                    `;
+
+                card.innerHTML = `
+                    <div class="flex gap-4 items-center">
+                        <img src="${item.image}" class="w-14 h-20 object-cover rounded-xl bg-bazar-gray border border-gray-200">
+                        <div class="flex-1 overflow-hidden">
+                            <h4 class="font-black text-bazar-dark text-base truncate mb-1">${item.title}</h4>
+                            <p class="text-xs text-gray-500 font-bold uppercase tracking-wider mb-2">${item.subject}</p>
+                            <p class="font-black text-bazar-green text-lg">${item.price} Kč</p>
+                        </div>
+                    </div>
+                    ${actionsHtml}
+                `;
+                container.appendChild(card);
+            });
+            lucide.createIcons();
+        };
+
+        window.renderProfileOrders = () => {
+            const container = document.getElementById('profile-my-orders');
+            container.innerHTML = '';
+            
+            if (!window.currentUser) return;
+            // Najdeme inzeráty, které koupil aktuálně přihlášený uživatel
+            const myOrders = window.dbListings.filter(item => item.buyerEmail === window.currentUser.email && item.status === 'sold');
+            
+            if (myOrders.length === 0) {
+                container.innerHTML = `<p class="text-sm text-gray-500 font-medium py-8 text-center bg-white rounded-2xl border border-gray-200">Zatím nemáte žádné aktivní rezervace.</p>`;
+                return;
+            }
+            
+            const sortedOrders = [...myOrders].sort((a,b) => (b.timestamp || 0) - (a.timestamp || 0));
+            
+            sortedOrders.forEach(item => {
+                const card = document.createElement('div');
+                card.className = `p-4 bg-white border border-bazar-green/30 bg-green-50/30 rounded-2xl shadow-sm flex flex-col gap-3 transition`;
+                
+                card.innerHTML = `
+                    <div class="flex gap-4 items-center">
+                        <img src="${item.image}" class="w-14 h-20 object-cover rounded-xl bg-bazar-gray border border-gray-200">
+                        <div class="flex-1 overflow-hidden">
+                            <h4 class="font-black text-bazar-dark text-base truncate mb-1">${item.title}</h4>
+                            <p class="text-xs text-gray-500 font-bold mb-2">Prodejce: ${item.seller}</p>
+                            <p class="font-black text-bazar-green text-lg">${item.price} Kč</p>
+                        </div>
+                    </div>
+                    <div class="flex flex-col gap-2 w-full mt-2 pt-3 border-t border-green-100">
+                        <span class="text-xs text-bazar-green font-black flex items-center gap-1"><i data-lucide="check-circle" class="w-4 h-4"></i> Úspěšně zarezervováno</span>
+                        <p class="text-[11px] text-gray-600 font-medium">Domluvte se s prodejcem na předání. E-mail: <strong class="text-bazar-dark">${item.sellerEmail}</strong></p>
+                    </div>
+                `;
+                container.appendChild(card);
+            });
+            lucide.createIcons();
+        };
+
+        window.changeListingStatus = (id, newStatus) => {
+            const listing = window.dbListings.find(l => l.id === id);
+            if (listing) {
+                listing.status = newStatus;
+                if (newStatus === 'available') {
+                    listing.buyerEmail = null; // Vymažeme kupce, pokud se to vrací do prodeje
+                    window.showToast("Inzerát vrácen do prodeje.");
+                }
+                
+                // Překreslíme data
+                window.renderProfileListings();
+                window.renderProfileOrders();
+                window.filterListings();
+            }
+        };
+
+        window.deleteListing = (id) => {
+            if (confirm("Opravdu smazat inzerát trvale?")) {
+                window.dbListings = window.dbListings.filter(l => l.id !== id);
+                window.showToast("Inzerát úspěšně smazán.");
+                
+                // Překreslíme data
+                window.renderProfileListings();
+                window.renderProfileOrders();
+                window.filterListings();
+            }
+        };
+
+        window.reportListing = (id) => {
+            window.showToast("Nahlášeno vedení školy.");
+            window.switchView('view-home');
+        };
+
+        // === FOTOGALERIE ===
+        window.openGallery = (imgSrc) => {
+            const modal = document.getElementById('gallery-modal');
+            const img = document.getElementById('gallery-image');
+            img.src = imgSrc;
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+            
+            // Animace zobrazení
+            requestAnimationFrame(() => {
+                modal.classList.remove('opacity-0');
+                modal.classList.add('opacity-100');
+                img.classList.remove('scale-95');
+                img.classList.add('scale-100');
+            });
+        };
+
+        window.closeGallery = () => {
+            const modal = document.getElementById('gallery-modal');
+            const img = document.getElementById('gallery-image');
+            
+            modal.classList.remove('opacity-100');
+            modal.classList.add('opacity-0');
+            img.classList.remove('scale-100');
+            img.classList.add('scale-95');
+            
+            setTimeout(() => {
+                modal.classList.add('hidden');
+                modal.classList.remove('flex');
+                img.src = "";
+            }, 300);
+        };
+
+        // === ZPRACOVÁNÍ OBRÁZKŮ (Komprese & QR Detekce) ===
+        window.handleImageSelection = (event, type) => {
+            const file = event.target.files[0];
+            if (!file) return;
+            if (!file.type.startsWith('image/')) { window.showToast("CHYBA: Nutný obrázek."); return; }
+
+            const reader = new FileReader();
+            reader.readAsDataURL(file);
+            reader.onload = function(e) {
+                const img = new Image();
+                img.src = e.target.result;
+                img.onload = function() {
+                    const canvas = document.createElement('canvas');
+                    // Pro QR kód zachováme vyšší rozlišení (800px), pro knihu stačí 400px
+                    const MAX_WIDTH = type === 'qr' ? 800 : 400; 
+                    const scaleSize = Math.min(MAX_WIDTH / img.width, 1); // Nezvětšovat malé fotky
+                    canvas.width = img.width * scaleSize;
+                    canvas.height = img.height * scaleSize;
+                    const ctx = canvas.getContext('2d');
+                    
+                    // Bílý podklad (pokud by fotka měla průhledné pozadí)
+                    ctx.fillStyle = "#FFFFFF";
+                    ctx.fillRect(0, 0, canvas.width, canvas.height);
+                    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+                    
+                    // Pokud uživatel nahrává QR kód, provedeme detekci přes jsQR
+                    if (type === 'qr') {
+                        const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+                        const code = jsQR(imageData.data, imageData.width, imageData.height, {
+                            inversionAttempts: "dontInvert",
+                        });
+
+                        if (!code) {
+                            window.showToast("CHYBA: V obrázku nebyl detekován žádný platný QR kód.");
+                            document.getElementById('qr-upload').value = ""; // Reset file inputu
+                            return; // Přerušíme nahrávání
+                        } else {
+                            window.showToast("Výborně, QR kód úspěšně ověřen.");
+                        }
+                    }
+
+                    const compressed = canvas.toDataURL('image/jpeg', 0.8);
+
+                    if (type === 'book') {
+                        currentUploadedImageBase64 = compressed;
+                        document.getElementById('image-preview').src = compressed;
+                        document.getElementById('image-preview').classList.remove('hidden');
+                        document.getElementById('upload-placeholder').classList.add('hidden');
+                        document.getElementById('remove-image-btn').classList.remove('hidden');
+                        document.getElementById('image-preview-container').classList.add('border-transparent');
+                    } else if (type === 'qr') {
+                        currentUploadedQRBase64 = compressed;
+                        document.getElementById('qr-preview').src = compressed;
+                        document.getElementById('qr-preview').classList.remove('hidden');
+                        document.getElementById('qr-upload-placeholder').classList.add('hidden');
+                        document.getElementById('remove-qr-btn').classList.remove('hidden');
+                    }
+                }
+            };
+        };
+
+        window.removeImage = (event, type) => {
+            if(event) event.stopPropagation();
+            if (type === 'book') {
+                currentUploadedImageBase64 = null;
+                document.getElementById('image-upload').value = "";
+                document.getElementById('image-preview').classList.add('hidden');
+                document.getElementById('upload-placeholder').classList.remove('hidden');
+                document.getElementById('remove-image-btn').classList.add('hidden');
+                document.getElementById('image-preview-container').classList.remove('border-transparent');
+            } else if (type === 'qr') {
+                currentUploadedQRBase64 = null;
+                document.getElementById('qr-upload').value = "";
+                document.getElementById('qr-preview').classList.add('hidden');
+                document.getElementById('qr-upload-placeholder').classList.remove('hidden');
+                document.getElementById('remove-qr-btn').classList.add('hidden');
+            }
+        };
+
+        // === PŘIDÁNÍ INZERÁTU ===
+        window.goToStep2 = () => {
+            const form = document.getElementById('add-form');
+            if (!form.reportValidity()) return;
+            if (!currentUploadedImageBase64) { window.showToast("CHYBA: Nahrajte fotku učebnice."); return; }
+            document.getElementById('step-1-add').classList.add('hidden');
+            document.getElementById('step-2-add').classList.remove('hidden');
+            document.getElementById('add-title').innerText = "Krok 2/2: Platba";
+        };
+
+        window.goToStep1 = () => {
+            document.getElementById('step-2-add').classList.add('hidden');
+            document.getElementById('step-1-add').classList.remove('hidden');
+            document.getElementById('add-title').innerText = "Krok 1/2: Kniha";
+        };
+
+        window.toggleQRSection = () => {
+            document.getElementById('qr-upload-section').classList.toggle('hidden', !document.getElementById('pay-qr').checked);
+        };
+
+        window.submitFinalAdd = () => {
+            const payCash = document.getElementById('pay-cash').checked;
+            const payQr = document.getElementById('pay-qr').checked;
+
+            if (!payCash && !payQr) { window.showToast("CHYBA: Vyberte způsob platby."); return; }
+            if (payQr && !currentUploadedQRBase64) { window.showToast("CHYBA: Připojte fotku QR kódu."); return; }
+            if (!window.currentUser) { window.showToast("CHYBA: Ztráta spojení. Přihlaste se znovu."); return; }
+
+            // Struktura inzerátu
+            const newListing = {
+                id: Date.now().toString() + Math.random().toString(36).substr(2, 5), // Vygenerování ID
+                title: document.getElementById('input-title').value,
+                subject: document.getElementById('input-subject').value,
+                condition: document.getElementById('input-condition').value,
+                price: parseInt(document.getElementById('input-price').value),
+                description: document.getElementById('input-desc').value,
+                dateAdded: new Date().toLocaleDateString('cs-CZ'),
+                seller: window.currentUser.name,
+                sellerEmail: window.currentUser.email,
+                image: currentUploadedImageBase64,
+                payment: { cash: payCash, qr: payQr ? currentUploadedQRBase64 : null },
+                status: 'available',
+                timestamp: Date.now()
+            };
+
+            // Uložení do lokální databáze v paměti
+            window.dbListings.push(newListing);
+
+            window.showToast('Inzerát přidán a uložen!');
+            document.getElementById('add-form').reset();
+            window.removeImage(null, 'book');
+            window.removeImage(null, 'qr');
+            window.toggleQRSection();
+            window.goToStep1();
+            
+            activeCategory = 'Vše';
+            window.renderCategories();
+            window.filterListings();
+            window.switchView('view-home');
+        };
+
+        // === ZOBRAZENÍ A FILTRY ===
+        window.renderCategories = () => {
+            const container = document.getElementById('category-filters');
+            container.innerHTML = '';
+            categories.forEach(cat => {
+                const btn = document.createElement('button');
+                btn.className = `whitespace-nowrap px-5 py-2.5 rounded-[14px] text-sm transition-all duration-200 border ${cat === activeCategory ? 'bg-bazar-dark text-white font-black border-bazar-dark' : 'bg-white text-gray-600 font-bold border-gray-200 hover:bg-gray-50 shadow-sm'}`;
+                btn.innerText = cat;
+                btn.onclick = () => { activeCategory = cat; window.renderCategories(); window.filterListings(); };
+                container.appendChild(btn);
+            });
+        };
+
+        window.filterListings = () => {
+            const query = document.getElementById('search-input').value.toLowerCase();
+            const filtered = window.dbListings.filter(item => {
+                const isAvailable = item.status !== 'sold'; 
+                const matchCategory = activeCategory === 'Vše' || item.subject === activeCategory;
+                const matchSearch = item.title.toLowerCase().includes(query) || item.subject.toLowerCase().includes(query);
+                return isAvailable && matchCategory && matchSearch;
+            });
+            // Seřazení podle nejnovějšího
+            filtered.sort((a,b) => (b.timestamp || 0) - (a.timestamp || 0));
+            renderHomeListings(filtered);
+        };
+
+        function renderHomeListings(dataToRender) {
+            const grid = document.getElementById('listings-grid');
+            const emptyState = document.getElementById('empty-state');
+            grid.innerHTML = '';
+
+            if (dataToRender.length === 0) {
+                grid.style.display = 'none';
+                emptyState.style.display = 'flex';
+                return;
+            }
+
+            grid.style.display = 'grid';
+            emptyState.style.display = 'none';
+
+            dataToRender.forEach((item, index) => {
+                const card = document.createElement('div');
+                // Přidána třída animate-slide-up-fade pro kaskádovité zobrazení
+                card.className = "animate-slide-up-fade bg-white rounded-[1.5rem] p-3 shadow-premium border border-gray-100 flex flex-col cursor-pointer transition-all duration-300 transform active:scale-95 hover:shadow-xl hover:-translate-y-1 relative overflow-hidden group";
+                // Nastavení zpoždění animace (stagger effect)
+                card.style.animationDelay = `${index * 0.08}s`;
+                card.onclick = () => window.openDetail(item);
+
+                card.innerHTML = `
+                    <div class="absolute inset-0 bg-gradient-to-b from-transparent to-gray-50/50 pointer-events-none"></div>
+                    <div class="relative w-full aspect-[3/4] rounded-2xl overflow-hidden mb-4 bg-bazar-gray border border-gray-100/50 shadow-inner">
+                        <img src="${item.image}" class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105">
+                        <div class="absolute top-2 left-2 bg-white/90 backdrop-blur-md text-[10px] font-black px-2.5 py-1.5 rounded-lg text-bazar-dark uppercase tracking-wider shadow-sm border border-white/50">${item.condition}</div>
+                    </div>
+                    <div class="px-1 flex flex-col flex-1 relative z-10">
+                        <h3 class="font-black text-bazar-dark text-sm leading-tight line-clamp-2 mb-1">${item.title}</h3>
+                        <p class="text-[11px] text-gray-500 font-bold mb-3 uppercase tracking-wider">${item.subject}</p>
+                        <div class="mt-auto flex justify-between items-center pt-2">
+                            <p class="font-black text-transparent bg-clip-text bg-gradient-to-r from-bazar-green to-emerald-600 text-lg">${item.price} Kč</p>
+                            <div class="w-8 h-8 rounded-full bg-gray-50 border border-gray-100 flex items-center justify-center text-bazar-dark group-hover:bg-bazar-dark group-hover:text-white group-hover:border-bazar-dark transition-colors shadow-sm"><i data-lucide="arrow-right" class="w-4 h-4 stroke-[2.5]"></i></div>
+                        </div>
+                    </div>
+                `;
+                grid.appendChild(card);
+            });
+            lucide.createIcons();
+        }
+
+        // === DETAIL KNIHY A PROCES NÁKUPU ===
+        window.openDetail = (item) => {
+            const container = document.getElementById('detail-content');
+            const isMyListing = window.currentUser && window.currentUser.email === item.sellerEmail;
+            
+            let actionButton = isMyListing 
+                ? `<button onclick="window.switchView('view-home')" class="w-full h-14 bg-gray-100 text-gray-400 rounded-2xl font-black text-base flex justify-center items-center gap-2 cursor-not-allowed border border-gray-200">Váš inzerát</button>`
+                : `<button onclick="window.openCheckout('${item.id}')" class="w-full h-14 bg-gradient-to-r from-bazar-green to-emerald-600 text-white rounded-2xl font-black text-base shadow-glow active:scale-95 transition-transform flex justify-center items-center gap-2 hover:shadow-[0_0_40px_rgba(16,185,129,0.5)]">Koupit za ${item.price} Kč</button>`;
+
+            container.innerHTML = `
+                <div class="relative h-[22rem] bg-bazar-gray cursor-pointer group" onclick="window.openGallery('${item.image}')">
+                    <img src="${item.image}" class="w-full h-full object-cover">
+                    
+                    <!-- Indikátor fotogalerie -->
+                    <div class="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-black/20">
+                       <div class="w-16 h-16 bg-black/50 rounded-full flex items-center justify-center text-white backdrop-blur-md shadow-lg transform transition-transform group-hover:scale-110">
+                          <i data-lucide="zoom-in" class="w-8 h-8"></i>
+                       </div>
+                    </div>
+                    
+                    <div class="absolute top-0 left-0 w-full p-6 safe-pt flex justify-between items-center z-10 bg-gradient-to-b from-black/60 via-black/20 to-transparent pointer-events-none">
+                        <button onclick="event.stopPropagation(); window.switchView('view-home')" class="w-12 h-12 rounded-[18px] bg-white/20 backdrop-blur-md flex items-center justify-center text-white active:scale-90 transition-transform border border-white/20 shadow-lg pointer-events-auto hover:bg-white/30"><i data-lucide="arrow-left" class="w-6 h-6"></i></button>
+                    </div>
+                    <div class="absolute bottom-12 right-4 bg-black/60 text-white text-xs font-bold px-3 py-1.5 rounded-full backdrop-blur-md z-10 flex items-center gap-1 pointer-events-none">
+                        <i data-lucide="image" class="w-3 h-3"></i> 1/1
+                    </div>
+                </div>
+                <div class="bg-white rounded-t-[2.5rem] -mt-10 relative px-6 pt-8 pb-32 shadow-[0_-10px_40px_rgba(0,0,0,0.05)]">
+                    <div class="flex justify-between items-center mb-4">
+                        <span class="px-4 py-2 bg-green-50 text-bazar-green rounded-xl text-xs font-black uppercase tracking-wider border border-green-100">${item.subject}</span>
+                        <p class="text-3xl font-black text-transparent bg-clip-text bg-gradient-to-r from-bazar-green to-emerald-600">${item.price} Kč</p>
+                    </div>
+                    <h1 class="text-2xl font-black text-bazar-dark mb-8 leading-tight">${item.title}</h1>
+                    
+                    <div class="grid grid-cols-2 gap-4 mb-8">
+                        <div class="bg-bazar-gray rounded-2xl p-4 flex flex-col justify-center border border-gray-100">
+                            <p class="text-[11px] text-gray-500 font-bold uppercase tracking-wider mb-1">Stav</p>
+                            <p class="font-black text-bazar-dark text-sm">${item.condition}</p>
+                        </div>
+                        <div class="bg-bazar-gray rounded-2xl p-4 flex flex-col justify-center border border-gray-100">
+                            <p class="text-[11px] text-gray-500 font-bold uppercase tracking-wider mb-1">Přidáno</p>
+                            <p class="font-black text-bazar-dark text-sm">${item.dateAdded}</p>
+                        </div>
+                    </div>
+
+                    <div class="mb-8">
+                        <h3 class="text-xs font-black text-gray-400 uppercase tracking-wider mb-3">Info od prodejce</h3>
+                        <p class="text-gray-700 text-sm leading-relaxed font-medium">${item.description || 'Bez popisu.'}</p>
+                    </div>
+
+                    <div class="flex items-center justify-between p-4 bg-white border border-gray-200 rounded-[1.5rem] shadow-sm mb-4">
+                        <div class="flex items-center gap-4">
+                            <div class="w-12 h-12 bg-bazar-dark text-white rounded-[14px] flex items-center justify-center font-black text-lg shadow-md">${item.seller.charAt(0).toUpperCase()}</div>
+                            <div>
+                                <p class="text-[11px] text-gray-400 font-bold uppercase tracking-wider">Prodejce</p>
+                                <p class="font-black text-bazar-dark">${item.seller}</p>
+                            </div>
+                        </div>
+                    </div>
+                    ${!isMyListing ? `<button onclick="window.reportListing('${item.id}')" class="w-full py-3 text-xs font-bold text-gray-400 text-center active:scale-90 transition-transform">Nahlásit problém s inzerátem</button>` : ''}
+                </div>
+                <div class="fixed bottom-0 left-0 w-full p-6 bg-white/80 backdrop-blur-2xl border-t border-gray-200/50 safe-pb sm:absolute sm:rounded-b-[44px]">
+                    ${actionButton}
+                </div>
+            `;
+            lucide.createIcons();
+            window.switchView('view-detail');
+        };
+
+        window.openCheckout = (id) => {
+            currentItemForCheckout = window.dbListings.find(l => l.id === id);
+            const item = currentItemForCheckout;
+            const canCash = item.payment ? item.payment.cash : true; 
+            const qrData = item.payment ? item.payment.qr : null;
+
+            let html = `
+                <div class="bg-white rounded-[2rem] p-4 border border-gray-200 flex gap-4 mb-8 items-center shadow-sm">
+                    <img src="${item.image}" class="w-20 h-24 object-cover rounded-2xl bg-bazar-gray">
+                    <div class="flex-1 pr-2">
+                        <h3 class="font-black text-bazar-dark text-sm leading-tight line-clamp-2 mb-1">${item.title}</h3>
+                        <p class="text-xs text-gray-500 font-bold mb-2">Prodává: ${item.seller}</p>
+                        <p class="text-xl font-black text-bazar-green">${item.price} Kč</p>
+                    </div>
+                </div>
+                <h2 class="text-sm font-black text-bazar-dark mb-4 uppercase tracking-wider">Způsob platby</h2>
+                <div class="space-y-3 mb-8">
+            `;
+            
+            if (canCash) {
+                html += `
+                    <label class="flex items-center p-5 bg-white border border-gray-200 rounded-2xl cursor-pointer hover:bg-gray-50 focus-within:ring-2 focus-within:border-bazar-green transition shadow-sm">
+                        <input type="radio" name="checkout-payment" value="cash" class="w-5 h-5 text-bazar-green border-gray-300" ${!qrData ? 'checked' : ''} onchange="window.updateCheckoutUI()">
+                        <div class="ml-4 flex-1"><span class="block font-black text-bazar-dark">Hotově při předání</span></div>
+                    </label>
+                `;
+            }
+            if (qrData) {
+                html += `
+                    <label class="flex items-center p-5 bg-white border border-gray-200 rounded-2xl cursor-pointer hover:bg-gray-50 focus-within:ring-2 focus-within:border-bazar-green transition shadow-sm">
+                        <input type="radio" name="checkout-payment" value="qr" class="w-5 h-5 text-bazar-green border-gray-300" ${!canCash || qrData ? 'checked' : ''} onchange="window.updateCheckoutUI()">
+                        <div class="ml-4 flex-1"><span class="block font-black text-bazar-dark">Přes QR kód na místě</span></div>
+                    </label>
+                `;
+            }
+            html += `</div>
+                <div id="checkout-qr-display" class="hidden flex-col items-center p-8 bg-bazar-gray border border-gray-200 rounded-[2rem] mb-8 text-center">
+                    <p class="text-sm font-black text-bazar-dark mb-4">Naskenujete při osobním předání s prodejcem</p>
+                    <div class="p-3 bg-white rounded-2xl shadow-sm border border-gray-200 inline-block"><img src="${qrData}" class="w-48 h-48 object-contain rounded-xl" onclick="window.openGallery('${qrData}')"></div>
+                </div>
+                <button onclick="window.confirmPurchase()" class="w-full h-14 bg-bazar-dark text-white rounded-2xl font-black text-base shadow-xl active:scale-95 transition flex justify-center items-center gap-2 mt-4">
+                    Potvrdit závazný nákup <i data-lucide="check" class="w-5 h-5"></i>
+                </button>
+            `;
+            document.getElementById('checkout-content').innerHTML = html;
+            lucide.createIcons();
+            window.switchView('view-checkout');
+            window.updateCheckoutUI();
+        };
+
+        window.updateCheckoutUI = () => {
+            const selected = document.querySelector('input[name="checkout-payment"]:checked');
+            const qrDisplay = document.getElementById('checkout-qr-display');
+            if (selected && selected.value === 'qr' && currentItemForCheckout.payment.qr) {
+                qrDisplay.classList.remove('hidden');
+                qrDisplay.classList.add('flex');
+            } else if (qrDisplay) {
+                qrDisplay.classList.add('hidden');
+                qrDisplay.classList.remove('flex');
+            }
+        };
+
+        window.confirmPurchase = () => {
+            const selected = document.querySelector('input[name="checkout-payment"]:checked');
+            if(!selected) { window.showToast("CHYBA: Vyberte způsob platby."); return; }
+            if (!window.currentUser) return;
+            
+            // Označení inzerátu jako "prodaný" v lokální databázi
+            const listing = window.dbListings.find(l => l.id === currentItemForCheckout.id);
+            if(listing) {
+                listing.status = 'sold';
+                listing.buyerEmail = window.currentUser.email; // Zapíšeme, kdo to koupil
+            }
+            
+            window.showToast("Nákup úspěšný! Inzerát zarezervován.");
+            
+            // Okamžité překreslení dat
+            window.filterListings();
+            setTimeout(() => { window.switchView('view-home'); }, 1500);
+        };
+
+        window.showToast = (message) => {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            const isError = message.includes("CHYBA");
+            
+            toast.className = `${isError ? "bg-red-500 text-white" : "bg-bazar-dark text-white shadow-glow"} px-6 py-4 rounded-2xl shadow-2xl text-sm font-bold flex items-center justify-center text-center transform -translate-y-10 opacity-0 transition-all duration-300 border border-white/10 z-[2000] relative`;
+            toast.innerText = message.replace("CHYBA:", "");
+            
+            container.appendChild(toast);
+            
+            requestAnimationFrame(() => {
+                toast.classList.remove('-translate-y-10', 'opacity-0');
+                toast.classList.add('translate-y-0', 'opacity-100');
+            });
+            
+            setTimeout(() => { 
+                toast.classList.remove('translate-y-0', 'opacity-100'); 
+                toast.classList.add('-translate-y-10', 'opacity-0'); 
+                setTimeout(() => toast.remove(), 300); 
+            }, 3500);
+        };
+
+        window.onload = () => { lucide.createIcons(); };
+    </script>
+</body>
+</html>
